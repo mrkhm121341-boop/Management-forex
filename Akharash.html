@@ -1,0 +1,144 @@
+<!DOCTYPE html><html lang="fa">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ماشین حساب مدیریت ریسک</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+  <div id="root" class="min-h-screen flex items-center justify-center p-4"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;function TradeCalculator() {
+  const [trades, setTrades] = useState([]);
+  const [form, setForm] = useState({ balance: "", risk: "", stop: "", target: "" });
+  const [entryPrice, setEntryPrice] = useState(0);
+
+  useEffect(() => {
+    // دریافت قیمت به صورت شبیه‌سازی (اینجا باید API واقعی صرافی وصل شود)
+    const fetchPrice = async () => {
+      // شبیه‌سازی قیمت
+      const simulatedPrice = (Math.random() * (2000 - 1900) + 1900).toFixed(2);
+      setEntryPrice(simulatedPrice);
+    };
+    fetchPrice();
+    const interval = setInterval(fetchPrice, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const calculate = () => {
+    const riskAmount = (parseFloat(form.balance) * parseFloat(form.risk)) / 100;
+    const diff = Math.abs(entryPrice - parseFloat(form.stop));
+    const lot = riskAmount / diff;
+    const profitWin = (Math.abs(parseFloat(form.target) - entryPrice) * lot).toFixed(2);
+    const profitLose = (-riskAmount).toFixed(2);
+    setTrades([...trades, {
+      entry: entryPrice,
+      stop: form.stop,
+      target: form.target,
+      lot: lot.toFixed(2),
+      riskAmount: riskAmount.toFixed(2),
+      profitWin,
+      profitLose
+    }]);
+  };
+
+  const clearAll = () => {
+    setTrades([]);
+  };
+
+  return (
+    <div className="w-full max-w-3xl bg-white rounded-2xl shadow-lg p-6 space-y-4">
+      <h1 className="text-2xl font-bold text-center">ماشین حساب مدیریت ریسک و سود/ضرر</h1>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-semibold mb-1">موجودی</label>
+          <input
+            type="number"
+            className="w-full p-2 border rounded-xl"
+            placeholder="موجودی حساب"
+            value={form.balance}
+            onChange={(e) => setForm({ ...form, balance: e.target.value })}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-semibold mb-1">درصد ریسک</label>
+          <input
+            type="number"
+            className="w-full p-2 border rounded-xl"
+            placeholder="درصد ریسک"
+            value={form.risk}
+            onChange={(e) => setForm({ ...form, risk: e.target.value })}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-semibold mb-1">قیمت ورود (از API)</label>
+          <input
+            type="number"
+            className="w-full p-2 border rounded-xl bg-gray-200"
+            value={entryPrice}
+            readOnly
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-semibold mb-1">استاپ لاس</label>
+          <input
+            type="number"
+            className="w-full p-2 border rounded-xl"
+            placeholder="استاپ لاس"
+            value={form.stop}
+            onChange={(e) => setForm({ ...form, stop: e.target.value })}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-semibold mb-1">تارگت</label>
+          <input
+            type="number"
+            className="w-full p-2 border rounded-xl"
+            placeholder="تارگت"
+            value={form.target}
+            onChange={(e) => setForm({ ...form, target: e.target.value })}
+          />
+        </div>
+      </div>
+      <button onClick={calculate} className="w-full bg-blue-500 text-white py-2 rounded-xl hover:bg-blue-600">افزودن معامله</button>
+      <button onClick={clearAll} className="w-full bg-gray-300 text-black py-2 rounded-xl hover:bg-gray-400">پاک کردن همه</button>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm text-center mt-4 border">
+          <thead>
+            <tr className="bg-blue-500 text-white">
+              <th className="p-2">ورودی</th>
+              <th className="p-2">استاپ</th>
+              <th className="p-2">تارگت</th>
+              <th className="p-2">لات</th>
+              <th className="p-2">ریسک ($)</th>
+              <th className="p-2">سود در برد</th>
+              <th className="p-2">ضرر در باخت</th>
+            </tr>
+          </thead>
+          <tbody>
+            {trades.map((t, i) => (
+              <tr key={i} className="odd:bg-white even:bg-gray-50">
+                <td className="p-2">{t.entry}</td>
+                <td className="p-2">{t.stop}</td>
+                <td className="p-2">{t.target}</td>
+                <td className="p-2">{t.lot}</td>
+                <td className="p-2">{t.riskAmount}</td>
+                <td className="p-2 text-green-600 font-bold">{t.profitWin}</td>
+                <td className="p-2 text-red-600 font-bold">{t.profitLose}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.render(<TradeCalculator />, document.getElementById("root"));
+
+  </script>
+</body>
+</html>
