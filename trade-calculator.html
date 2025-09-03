@@ -1,0 +1,84 @@
+<!DOCTYPE html><html lang="fa">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ماشین حساب مدیریت ریسک</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+  <div id="root" class="min-h-screen flex items-center justify-center p-4"></div>  <script type="text/babel">
+    const { useState } = React;
+
+    function TradeCalculator() {
+      const [trades, setTrades] = useState([]);
+      const [form, setForm] = useState({balance: "", risk: "", entry: "", stop: "", target: ""});
+
+      const calculate = () => {
+        const riskAmount = (parseFloat(form.balance) * parseFloat(form.risk)) / 100;
+        const diff = Math.abs(parseFloat(form.entry) - parseFloat(form.stop));
+        const lot = riskAmount / diff;
+        const reward = Math.abs(parseFloat(form.entry) - parseFloat(form.target)) * lot;
+        const rr = reward / riskAmount;
+        setTrades([...trades, { ...form, lot: lot.toFixed(2), riskAmount: riskAmount.toFixed(2), rr: rr.toFixed(2) }]);
+      };
+
+      const clear = () => {
+        setTrades([]);
+        setForm({balance: "", risk: "", entry: "", stop: "", target: ""});
+      };
+
+      return (
+        <div className="w-full max-w-xl bg-white rounded-2xl shadow-lg p-6 space-y-4">
+          <h1 className="text-2xl font-bold text-center">ماشین حساب مدیریت ریسک و حجم معامله</h1>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {Object.keys(form).map((key) => (
+              <div key={key}>
+                <label className="block text-sm font-semibold mb-1">
+                  {key === "balance" ? "موجودی" : key === "risk" ? "درصد ریسک" : key === "entry" ? "ورودی" : key === "stop" ? "استاپ لاس" : "تارگت"}
+                </label>
+                <input
+                  className="w-full p-2 border rounded-xl focus:outline-none focus:ring focus:ring-blue-400"
+                  placeholder={key}
+                  value={form[key]}
+                  onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                  type="number"
+                />
+              </div>
+            ))}
+          </div>
+          <button onClick={calculate} className="w-full bg-blue-500 text-white py-2 rounded-xl hover:bg-blue-600">محاسبه</button>
+          <button onClick={clear} className="w-full bg-gray-300 text-black py-2 rounded-xl hover:bg-gray-400">پاک کردن</button>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left mt-4 border">
+              <thead>
+                <tr className="bg-blue-500 text-white">
+                  <th className="p-2">ورودی</th>
+                  <th className="p-2">استاپ</th>
+                  <th className="p-2">لات</th>
+                  <th className="p-2">ریسک ($)</th>
+                  <th className="p-2">R:R</th>
+                </tr>
+              </thead>
+              <tbody>
+                {trades.map((t, i) => (
+                  <tr key={i} className="odd:bg-white even:bg-gray-50">
+                    <td className="p-2">{t.entry}</td>
+                    <td className="p-2">{t.stop}</td>
+                    <td className="p-2">{t.lot}</td>
+                    <td className="p-2">{t.riskAmount}</td>
+                    <td className={`p-2 ${parseFloat(t.rr) >= 2 ? "text-green-600 font-bold" : parseFloat(t.rr) < 1 ? "text-red-600 font-bold" : ""}`}>{t.rr}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<TradeCalculator />, document.getElementById("root"));
+  </script></body>
+</html>
