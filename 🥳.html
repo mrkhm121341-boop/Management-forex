@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ماشین حساب پیشرفته مدیریت ریسک فارکس و کریپتو</title>
+  <!-- React + Babel -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Tailwind CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      background: linear-gradient(135deg, #6D28D9, #06B6D4, #3B82F6);
+      background-size: 400% 400%;
+      animation: gradientMove 20s ease infinite;
+      color: white;
+    }
+    @keyframes gradientMove {
+      0% { background-position: 0% 50% }
+      50% { background-position: 100% 50% }
+      100% { background-position: 0% 50% }
+    }
+    .glass {
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.25);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex justify-center p-4">
+  <div id="root" class="w-full max-w-6xl"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+    const BINANCE = ["BTCUSDT","ETHUSDT","BNBUSDT","SOLUSDT","ADAUSDT"];
+    const FX_LIST = ["EURUSD","GBPUSD","USDJPY","XAUUSD","XAGUSD"];
+
+    function App() {
+      const [form, setForm] = useState({ symbol: "EURUSD", balance: "", risk: "", entry: "", stop: "", target: "", spread: "", commission: "" });
+      const [trades, setTrades] = useState(JSON.parse(localStorage.getItem("trades_full")||"[]"));
+      const rrRef = useRef(null), eqRef = useRef(null);
+      const rrChart = useRef(null), eqChart = useRef(null);
+
+      useEffect(()=> localStorage.setItem("trades_full", JSON.stringify(trades)), [trades]);
+
+      useEffect(() => {
+        if (form.symbol.length === 6) {
+          if (BINANCE.includes(form.symbol)) {
+            fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${form.symbol}`)
+              .then(r => r.json()).then(d => d.price && setForm(f => ({ ...f, entry: parseFloat(d.price).toFixed(4) })));
+          } else {
+            const from = form.symbol.slice(0,3), to = form.symbol.slice(3);
+            fetch(`https://api.exchangerate.host/convert?from=${from}&to=${to}`)
+              .then(r => r.json()).then(d => d.success && setForm(f => ({ ...f, entry: d.result.toFixed(5) })));
+          }
+        }
+      }, [form.symbol]);
+
+      useEffect(()=>{
+        if (rrChart.current) rrChart.current.destroy();
+        rrChart.current = new Chart(rrRef.current, {
+          type: 'bar', data: { labels: trades.map((t,i)=>`${t.symbol} #${i+1}`),
+            datasets:[{ label:'R:R خالص', data:trades.map(t=>parseFloat(t.rr)), backgroundColor:trades.map(t=>parseFloat(t.rr)>=2?'rgba(34,197,94,0.6)':parseFloat(t.rr)<1?'rgba(239,68,68,0.6)':'rgba(59,130,246,0.6)')}]
+          },
+          options:{ responsive:true, plugins:{legend:{labels:{color:'#fff'}}}, scales:{x:{ticks:{color:'#fff'}}, y:{beginAtZero:true, ticks:{color:'#fff'}}}}
+        });
+        if (eqChart.current) eqChart.current.destroy();
+        let cum=0; const eq=trades.map(t=>cum+=parseFloat(t.netProfit));
+        eqChart.current = new Chart(eqRef.current, {
+          type:'line', data: { labels: trades.map((_,i)=>`#${i+1}`), datasets:[{ label:"روند اکوییتی تجمعی", data:eq, borderColor:"#fff", borderWidth:2, fill:false }] },
+          options:{responsive:true, plugins:{legend:{labels:{color:'#fff'}}}, scales:{x:{ticks:{color:'#fff'}}, y:{ticks:{color:'#fff'}}}}
+        });
+      }, [trades]);
+
+      const calc = () => {
+        const b=+form.balance, r=+form.risk, e=+form.entry, s=+form.stop, t=+form.target;
+        if([b,r,e,s,t].some(v=>isNaN(v))) return alert("همه فیلدها را وارد کنید!");
+        const riskAmt = b*r/100, diff=Math.abs(e-s), lot = riskAmt/diff;
+        const move = Math.abs(t-e), reward = move*lot;
+        const cost = +form.spread + +form.commission, net = reward-cost, rr=net/riskAmt;
+        setTrades(prev=>[...prev,{...form, lot:lot.toFixed(3), riskAmount:riskAmt.toFixed(2), netProfit:net.toFixed(2), rr:rr.toFixed(2)}]);
+      };
+      const clearAll=()=>setTrades([]);
+
+      const wins=trades.filter(t=>t.netProfit>0).length, losses=trades.length-wins;
+      const winRate=trades.length?((wins/trades.length*100).toFixed(1)):0;
+
+      return (
+        <div className="space-y-6 w-full">
+          <div className="glass rounded-3xl p-6 grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
+            <div><div className="opacity-80">معاملات</div><div className="text-2xl font-bold">{trades.length}</div></div>
+            <div><div className="opacity-80">برد</div><div className="text-2xl font-bold">{wins}</div></div>
+            <div><div className="opacity-80">باخت</div><div className="text-2xl font-bold">{losses}</div></div>
+            <div><div className="opacity-80">درصد برد</div><div className="text-2xl font-bold">{winRate}%</div></div>
+          </div>
+
+          <div className="glass rounded-3xl p-6 space-y-4">
+            <h2 className="text-xl font-bold mb-2">محاسبه فوری</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div><label className="font-semibold">نماد</label><input className="w-full p-2 rounded-xl border text-black" value={form.symbol} onChange={e=>setForm({...form,symbol:e.target.value.toUpperCase()})}/></div>
+              {["balance","risk","stop","target","spread","commission"].map(key=>(
+                <div key={key}><label className="font-semibold">{key==="balance"?"موجودی":key==="risk"?"ریسک(%)":key==="stop"?"استاپ":"تارگت"}{key==="spread"?" اسپرد":key==="commission"?" کمیسیون":""}</label><input className="w-full p-2 rounded-xl border text-black" type="number" value={form[key]} onChange={e=>setForm({...form,[key]:e.target.value})}/></div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={calc} className="flex-1 bg-green-500 hover:bg-green-600 py-2 rounded-xl transition transform hover:scale-105">محاسبه و اضافه</button>
+              <button onClick={clearAll} className="flex-1 bg-red-500 hover:bg-red-600 py-2 rounded-xl transition transform hover:scale-105">پاک کردن همه</button>
+            </div>
+          </div>
+
+          <div className="glass rounded-3xl p-6">
+            <h2 className="text-xl font-bold mb-2">لیست معاملات</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left border border-white/20 rounded-xl">
+                <thead><tr className="bg-white/20"><th className="p-2">نماد</th><th className="p-2">ورودی</th><th className="p-2">استاپ</th><th className="p-2">لات</th><th className="p-2">ریسک ($)</th><th className="p-2">R:R</th><th className="p-2">سود خالص</th></tr></thead>
+                <tbody>{trades.map((t,i)=>(
+                  <tr key={i} className="odd:bg-white/10 even:bg-white/5"><td className="p-2">{t.symbol}</td><td className="p-2">{t.entry}</td><td className="p-2">{t.stop}</td><td className="p-2">{t.lot}</td><td className="p-2">{t.riskAmount}</td><td className={`p-2 ${+t.rr>=2?'text-green-300':+t.rr<1?'text-red-300':''}`}>{t.rr}</td><td className={`p-2 ${+t.netProfit>=0?'text-green-300':'text-red-300'}`}>{t.netProfit}</td></tr>
+                ))}</tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="glass rounded-3xl p-6"><h2 className="text-xl font-bold mb-2">نمودار R:R</h2><canvas ref={rrRef}></canvas></div>
+            <div className="glass rounded-3xl p-6"><h2 className="text-xl font-bold mb-2">رشد اکوییتی</h2><canvas ref={eqRef}></canvas></div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<App/>, document.getElementById("root"));
+  </script>
+</body>
+</html>
