@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ماشین حساب مدیریت ریسک فارکس</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(135deg, #0f172a, #1e293b, #334155);
+      color: white;
+    }
+    .glass {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-6 space-y-6">
+  <div id="root" class="w-full max-w-5xl"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    function TradeCalculator() {
+      const [trades, setTrades] = useState([]);
+      const [form, setForm] = useState({symbol: "EURUSD", balance: "", risk: "", entry: "", stop: "", target: "", spread: "", commission: ""});
+      const chartRef = useRef(null);
+      const chartInstance = useRef(null);
+
+      const symbols = {
+        EURUSD: 10,
+        GBPUSD: 10,
+        USDJPY: 1000,
+        XAUUSD: 100,
+      };
+
+      const calculate = () => {
+        const riskAmount = (parseFloat(form.balance) * parseFloat(form.risk)) / 100;
+        const diff = Math.abs(parseFloat(form.entry) - parseFloat(form.stop));
+        const pipValue = symbols[form.symbol] || 10;
+        const lot = (riskAmount / (diff * pipValue)).toFixed(2);
+        const reward = Math.abs(parseFloat(form.entry) - parseFloat(form.target)) * pipValue * lot;
+        const costs = (parseFloat(form.spread) || 0) + (parseFloat(form.commission) || 0);
+        const netProfit = (reward - costs).toFixed(2);
+        const rr = (reward / riskAmount).toFixed(2);
+        setTrades([...trades, { ...form, lot, riskAmount: riskAmount.toFixed(2), rr, netProfit }]);
+      };
+
+      const clearAll = () => {
+        setTrades([]);
+        setForm({symbol: "EURUSD", balance: "", risk: "", entry: "", stop: "", target: "", spread: "", commission: ""});
+      };
+
+      const removeTrade = (i) => {
+        setTrades(trades.filter((_, index) => index !== i));
+      };
+
+      useEffect(() => {
+        if (chartInstance.current) {
+          chartInstance.current.destroy();
+        }
+        if (trades.length > 0) {
+          const ctx = chartRef.current.getContext('2d');
+          chartInstance.current = new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: trades.map((t, i) => `${t.symbol} #${i + 1}`),
+              datasets: [{
+                label: 'R:R',
+                data: trades.map(t => parseFloat(t.rr)),
+                backgroundColor: trades.map(t =>
+                  parseFloat(t.rr) >= 2 ? 'rgba(34,197,94,0.7)' :
+                  parseFloat(t.rr) < 1 ? 'rgba(239,68,68,0.7)' :
+                  'rgba(59,130,246,0.7)'
+                ),
+              }]
+            },
+            options: {
+              responsive: true,
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  ticks: { color: '#fff' }
+                },
+                x: {
+                  ticks: { color: '#fff' }
+                }
+              },
+              plugins: {
+                legend: { labels: { color: '#fff' } }
+              }
+            }
+          });
+        }
+      }, [trades]);
+
+      return (
+        <div className="space-y-8 w-full">
+          {/* بخش محاسبه برجسته */}
+          <div className="glass rounded-3xl shadow-xl p-6 space-y-4">
+            <h1 className="text-3xl font-bold text-center mb-4">ماشین حساب مدیریت ریسک فارکس</h1>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block font-semibold">نماد</label>
+                <select className="w-full p-2 rounded-xl border text-black"
+                  value={form.symbol}
+                  onChange={(e)=> setForm({...form, symbol: e.target.value})}>
+                  {Object.keys(symbols).map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              {Object.keys(form).filter(k => k !== "symbol").map((key) => (
+                <div key={key}>
+                  <label className="block font-semibold">
+                    {key === "balance" ? "موجودی" : key === "risk" ? "درصد ریسک" : key === "entry" ? "ورودی" : key === "stop" ? "استاپ لاس" : key === "target" ? "تارگت" : key === "spread" ? "اسپرد (دلاری)" : "کمیسیون (دلاری)"}
+                  </label>
+                  <input
+                    className="w-full p-2 border rounded-xl text-black"
+                    value={form[key]}
+                    onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                    type="number"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-4 mt-4">
+              <button onClick={calculate} className="flex-1 bg-blue-500 hover:bg-blue-600 transition py-2 rounded-xl">محاسبه</button>
+              <button onClick={clearAll} className="flex-1 bg-red-500 hover:bg-red-600 transition py-2 rounded-xl">پاک کردن همه</button>
+            </div>
+          </div>
+
+          {/* جدول */}
+          <div className="glass rounded-3xl shadow-xl p-6">
+            <h2 className="text-xl font-bold mb-4">نتایج معاملات</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left border border-white/20 rounded-xl overflow-hidden">
+                <thead>
+                  <tr className="bg-white/20 text-white">
+                    <th className="p-2">نماد</th>
+                    <th className="p-2">ورودی</th>
+                    <th className="p-2">استاپ</th>
+                    <th className="p-2">لات</th>
+                    <th className="p-2">R:R</th>
+                    <th className="p-2">سود خالص ($)</th>
+                    <th className="p-2">حذف</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {trades.map((t, i) => (
+                    <tr key={i} className="odd:bg-white/10 even:bg-white/5">
+                      <td className="p-2">{t.symbol}</td>
+                      <td className="p-2">{t.entry}</td>
+                      <td className="p-2">{t.stop}</td>
+                      <td className="p-2">{t.lot}</td>
+                      <td className={`p-2 ${parseFloat(t.rr) >= 2 ? "text-green-400 font-bold" : parseFloat(t.rr) < 1 ? "text-red-400 font-bold" : ""}`}>{t.rr}</td>
+                      <td className="p-2">{t.netProfit}</td>
+                      <td className="p-2"><button onClick={() => removeTrade(i)} className="bg-red-400 hover:bg-red-500 px-2 py-1 rounded">X</button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* نمودار R:R */}
+          <div className="glass rounded-3xl shadow-xl p-6">
+            <h2 className="text-xl font-bold mb-4">نمودار R:R معاملات</h2>
+            <canvas ref={chartRef}></canvas>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<TradeCalculator />, document.getElementById("root"));
+  </script>
+</body>
+</html>
