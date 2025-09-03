@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ماشین‌حساب کامل فارکس | حجم پوزیشن و مدیریت ریسک</title>
+  <style>
+    /* ====== Design System (Minimal & Clean) ====== */
+    :root{
+      --bg:#0b1220; --panel:#0f172a; --muted:#8da2c0; --text:#e5eaf2; --line:#1e293b;
+      --accent:#22c55e; --accent-2:#38bdf8; --warn:#f59e0b; --error:#ef4444;
+      --chip:#111a2e; --shadow:0 12px 30px rgba(0,0,0,.25);
+      --radius:16px; --radius-sm:12px; --pad:16px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:IRANSans,Inter,Segoe UI,Roboto,Arial}
+    .wrap{max-width:1100px;margin:auto;padding:24px}
+    h1{margin:0 0 8px;font-size:22px}
+    p.muted{color:var(--muted);margin:0 0 16px}
+    .grid{display:grid;gap:12px;grid-template-columns:repeat(12,minmax(0,1fr))}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:var(--pad)}
+    .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:12px}
+    .kpi{background:#0a1326;border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px;text-align:center}
+    .kpi h3{margin:0;color:var(--muted);font-size:12px}
+    .kpi p{margin:6px 0 0;font-size:18px}
+    label{display:block;font-size:12px;color:var(--muted);margin:4px 0 6px}
+    input,select,button{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#0a1326;color:var(--text);font-size:14px}
+    input:focus,select:focus{outline:2px solid #21314b}
+    .row{display:grid;gap:12px;grid-template-columns:repeat(2,minmax(0,1fr))}
+    .btn{cursor:pointer;transition:.15s;background:#162032}
+    .btn:hover{transform:translateY(-1px)}
+    .primary{background:var(--accent);border-color:var(--accent);color:#04110a;font-weight:700}
+    .outline{background:transparent}
+    .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .chip{padding:6px 10px;border-radius:999px;background:var(--chip);color:#cfd8e4;border:1px solid var(--line);font-size:11px}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{padding:10px;border-bottom:1px solid var(--line);text-align:center;font-size:13px}
+    th{color:#aab7ce;font-weight:600}
+    .bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    .col-9{grid-column:span 9}.col-3{grid-column:span 3}
+    .col-12{grid-column:span 12}
+    .tag-ok{color:#a7f3d0}.tag-bad{color:#fecaca}.tag-warn{color:#fde68a}
+    @media (max-width:980px){
+      .grid{grid-template-columns:repeat(6,minmax(0,1fr))}
+      .col-9{grid-column:span 6}.col-3{grid-column:span 6}
+      .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .row{grid-template-columns:1fr}
+    }
+    @media (max-width:560px){
+      .grid{grid-template-columns:repeat(1,minmax(0,1fr))}
+      .col-9,.col-3,.col-12{grid-column:span 1}
+      .kpis{grid-template-columns:1fr 1fr}
+    }
+    /* small helper badges */
+    .hint{font-size:11px;color:var(--muted);margin-top:4px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>ماشین‌حساب کامل فارکس (حجم پوزیشن، ریسک، سود، R:R)</h1>
+    <p class="muted">برای اکثر جفت‌های فارکس (غیرِ JPY): هر <b>۱ پیپ</b> در <b>۱ لات ≈ 10$</b> — برای USDJPY: <b>1000 / قیمت</b> — برای طلا (XAUUSD): هر <b>۱ دلار</b> حرکت در <b>۱ لات ≈ 100$</b>.</p>
+
+    <div class="grid">
+      <!-- Form -->
+      <div class="card col-9">
+        <div class="grid" style="gap:12px;grid-template-columns:repeat(4,minmax(0,1fr))">
+          <div>
+            <label>نماد</label>
+            <input id="symbol" placeholder="EURUSD / USDJPY / XAUUSD" value="XAUUSD">
+          </div>
+          <div>
+            <label>نوع ابزار</label>
+            <select id="instrument">
+              <option value="forex">Forex (غیرِ JPY)</option>
+              <option value="forex-jpy">Forex (JPY quote)</option>
+              <option value="gold" selected>Gold (XAUUSD)</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+          <div>
+            <label>موجودی حساب ($)</label>
+            <input id="balance" type="number" value="1000">
+          </div>
+          <div>
+            <label>ریسک هر معامله (%)</label>
+            <input id="riskPct" type="number" step="0.1" value="1.5">
+          </div>
+
+          <div>
+            <label>قیمت ورود</label>
+            <input id="entry" type="number" step="0.0001" value="2350">
+          </div>
+          <div>
+            <label>حد ضرر</label>
+            <input id="sl" type="number" step="0.0001" value="2347.5">
+          </div>
+          <div>
+            <label>حد سود (اختیاری)</label>
+            <input id="tp" type="number" step="0.0001" placeholder="اگر خالی باشد از R:R استفاده می‌شود">
+            <div class="hint">اگر این را خالی بگذاری، با نسبت R:R زیر محاسبه می‌شود.</div>
+          </div>
+          <div>
+            <label>هدف R:R (وقتی TP خالی است)</label>
+            <input id="rrTarget" type="number" step="0.1" value="2">
+          </div>
+
+          <div>
+            <label>ارزش هر واحد حرکت برای ۱ لات ($)</label>
+            <input id="unitValue" type="number" step="0.01" value="100">
+            <div class="hint">برای XAUUSD = 100 ، برای EURUSD ≈ 10 ، برای USDJPY ≈ 1000/Price</div>
+          </div>
+          <div>
+            <label>اهرم (Leverage) (مثل 100 یعنی 1:100)</label>
+            <input id="leverage" type="number" step="1" value="100">
+          </div>
+          <div>
+            <label>کمیسیون/کارمزد کل ($)</label>
+            <input id="fees" type="number" step="0.01" value="0">
+          </div>
+          <div>
+            <label>لغزش + اسپرد (واحد حرکت)</label>
+            <input id="slippage" type="number" step="0.01" value="0">
+            <div class="hint">به عنوان مثال 0.5 دلار روی طلا یا 0.5 پیپ روی فارکس</div>
+          </div>
+        </div>
+
+        <div class="bar">
+          <button class="btn" id="autoUnit">تشخیص خودکار ارزش حرکت</button>
+          <button class="btn primary" id="calcBtn">محاسبه</button>
+          <button class="btn" id="addBtn">افزودن به جدول</button>
+          <button class="btn outline" id="saveBtn">ذخیره در مرورگر</button>
+          <button class="btn outline" id="loadBtn">بازخوانی</button>
+        </div>
+
+        <div class="kpis">
+          <div class="kpi"><h3>حجم (لات)</h3><p id="kLot">-</p></div>
+          <div class="kpi"><h3>ریسک دلاری</h3><p id="kRisk">-</p></div>
+          <div class="kpi"><h3>سود بالقوه</h3><p id="kProfit">-</p></div>
+          <div class="kpi"><h3>نسبت R:R</h3><p id="kRR">-</p></div>
+        </div>
+
+        <div class="chips">
+          <span class="chip">Forex غیرِ JPY → 1 pip/lot ≈ $10</span>
+          <span class="chip">USDJPY → pip/lot ≈ 1000 / Price</span>
+          <span class="chip">XAUUSD → $1/lot = $100</span>
+          <span class="chip">WTI (تقریبی) → $1/lot = $1000</span>
+        </div>
+      </div>
+
+      <!-- Tips -->
+      <div class="card col-3">
+        <h3 style="margin:0 0 8px">نکات سریع مدیریت ریسک</h3>
+        <ul style="margin:0 0 8px 0;padding:0 18px 0 0;line-height:1.8;color:var(--muted);font-size:13px">
+          <li>معمولاً ۰.۵% تا ۲% ریسک در هر معامله.</li>
+          <li>R:R زیر 1 معمولاً جذاب نیست؛ بالای 2 مطلوب‌تر است.</li>
+          <li>لغزش و کارمزد را در بودجه ریسک لحاظ کن.</li>
+          <li>مارجین تقریبی است؛ مقدار دقیق را در پلتفرم بروکر چک کن.</li>
+        </ul>
+        <div class="chip">🛈 این ابزار آفلاین کار می‌کند</div>
+      </div>
+
+      <!-- Table -->
+      <div class="card col-12">
+        <div class="bar">
+          <button class="btn outline" id="exportCsv">دانلود CSV</button>
+          <button class="btn outline" id="clearTable">پاک‌کردن جدول</button>
+        </div>
+        <table id="table">
+          <thead>
+            <tr>
+              <th>#</th><th>نماد</th><th>ورود</th><th>SL</th><th>TP</th>
+              <th>فاصله تا SL</th><th>$/واحد/لات</th><th>لات</th>
+              <th>ریسک ($)</th><th>سود ($)</th><th>R:R</th><th>مارجین تقریبی ($)</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ======= Logic =======
+    const $ = id => document.getElementById(id);
+    const rows = [];
+
+    function autoUnit(){
+      const typ = $("instrument").value;
+      const entry = parseFloat($("entry").value || 0);
+      if(typ === "gold"){ $("unitValue").value = 100; return; }
+      if(typ === "forex"){ $("unitValue").value = 10; return; }
+      if(typ === "forex-jpy"){
+        $("unitValue").value = entry>0 ? (1000/entry).toFixed(2) : 7;
+      }
+    }
+
+    function calc(){
+      const entry = parseFloat($("entry").value);
+      const sl = parseFloat($("sl").value);
+      let tp = parseFloat($("tp").value);
+      const rrTarget = parseFloat($("rrTarget").value || "2");
+      const unit = parseFloat($("unitValue").value);
+      const bal = parseFloat($("balance").value);
+      const rPct = parseFloat($("riskPct").value);
+      const fees = parseFloat($("fees").value || "0");
+      const slip = parseFloat($("slippage").value || "0");
+
+      if(!isFinite(entry)||!isFinite(sl)||!isFinite(unit)||!isFinite(bal)||!isFinite(rPct)||unit<=0){
+        alert("ورودی‌ها را بررسی کنید"); return null;
+      }
+
+      const dist = Math.abs(entry - sl) + (slip||0);      // فاصله تا استاپ
+      const riskUSD = bal * (rPct/100);                   // بودجه ریسک
+      const lot = riskUSD / (dist * unit);                // حجم لات
+
+      if(!isFinite(tp)){
+        // جهت TP بر اساس جهت استاپ
+        const dir = Math.sign(entry - sl); // اگر SL پایین‌تر باشد، dir مثبت (خرید)
+        tp = entry + (dir * dist * (rrTarget||2));
+      }
+
+      const distTP = Math.abs(tp - entry);
+      const grossProfit = lot * distTP * unit;
+      const profit = grossProfit - (fees||0);
+      const rr = profit / (riskUSD || 1);
+
+      // مارجین تقریبی
+      const lev = parseFloat($("leverage").value || "100");
+      const typ = $("instrument").value;
+      let margin = 0;
+      if(typ === "gold"){
+        // 1 lot ≈ 100 oz → notional = lot * 100 * entry
+        margin = (lot * 100 * entry) / lev;
+      }else if(typ.startsWith("forex")){
+        // non-JPY approx notional = lot*100000*entry  |  JPY approx lot*100000
+        const notional = typ==="forex-jpy" ? (lot*100000) : (lot*100000*entry);
+        margin = notional/lev;
+      }
+
+      // نمایش KPI
+      $("kLot").innerText = lot>0 ? lot.toFixed(3) : "-";
+      $("kRisk").innerText = isFinite(riskUSD) ? riskUSD.toFixed(2) : "-";
+      $("kProfit").innerText = isFinite(profit) ? profit.toFixed(2) : "-";
+      $("kRR").innerText = isFinite(rr) ? rr.toFixed(2) : "-";
+
+      // رنگ R:R در KPI (بصورت ساده)
+      const rrEl = $("kRR");
+      rrEl.classList.remove("tag-ok","tag-bad","tag-warn");
+      if(rr >= 2) rrEl.classList.add("tag-ok");
+      else if(rr < 1) rrEl.classList.add("tag-bad");
+      else rrEl.classList.add("tag-warn");
+
+      return {entry, sl, tp, dist, unit, lot, riskUSD, profit, rr, margin};
+    }
+
+    function addRow(){
+      const sym = $("symbol").value.trim() || "-";
+      const r = calc(); if(!r) return;
+      rows.push({sym, ...r});
+      render(); saveLocal();
+    }
+
+    function render(){
+      const tb = document.querySelector("#table tbody");
+      tb.innerHTML = "";
+      rows.forEach((r,i)=>{
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${i+1}</td>
+          <td>${r.sym}</td>
+          <td>${num(r.entry)}</td>
+          <td>${num(r.sl)}</td>
+          <td>${num(r.tp)}</td>
+          <td>${num(r.dist,4)}</td>
+          <td>${num(r.unit)}</td>
+          <td>${num(r.lot,3)}</td>
+          <td>${num(r.riskUSD)}</td>
+          <td>${num(r.profit)}</td>
+          <td class="${r.rr>=2?'tag-ok':(r.rr<1?'tag-bad':'tag-warn')}">${num(r.rr,2)}</td>
+          <td>${num(r.margin)}</td>`;
+        tb.appendChild(tr);
+      });
+    }
+
+    function num(v,dec=2){ return isFinite(v) ? Number(v).toFixed(dec) : "-"; }
+
+    function exportCsv(){
+      const header = ["#","Symbol","Entry","SL","TP","DistToSL","$/Unit/Lot","Lot","Risk$","Profit$","R:R","Margin$"];
+      const lines = [header.join(",")];
+      rows.forEach((r,i)=>{
+        lines.push([i+1,r.sym,r.entry,r.sl,r.tp,r.dist,r.unit,r.lot,r.riskUSD,r.profit,r.rr,r.margin].join(","));
+      });
+      const blob = new Blob([lines.join("\n")],{type:"text/csv;charset=utf-8;"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href=url; a.download="trades.csv";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    }
+
+    function saveLocal(){ localStorage.setItem("riskCalcRows", JSON.stringify(rows)); }
+    function loadLocal(){ const s = localStorage.getItem("riskCalcRows"); if(s){ rows.length=0; JSON.parse(s).forEach(x=>rows.push(x)); render(); } }
+
+    $("autoUnit").onclick = autoUnit;
+    $("calcBtn").onclick  = calc;
+    $("addBtn").onclick   = addRow;
+    $("exportCsv").onclick= exportCsv;
+    $("clearTable").onclick= ()=>{ rows.length=0; render(); saveLocal(); };
+    $("saveBtn").onclick  = saveLocal;
+    $("loadBtn").onclick  = loadLocal;
+
+    // init
+    autoUnit(); loadLocal();
+  </script>
+</body>
+</html>
