@@ -1,0 +1,253 @@
+<!DOCTYPE html><html lang="fa">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ماشین حساب فارکس با حالت تاریک</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 dark:bg-gray-900">
+  <div id="root" class="min-h-screen flex items-center justify-center p-4"></div>  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    function TradeCalculator() {
+      const [dark, setDark] = useState(false);
+      const [trades, setTrades] = useState(() => {
+        const saved = localStorage.getItem("trades");
+        return saved ? JSON.parse(saved) : [];
+      });
+      const [form, setForm] = useState({
+        balance: "",
+        riskType: "percent",
+        risk: "",
+        entry: "",
+        stop: "",
+        target: "",
+        pair: "EURUSD"
+      });
+
+      useEffect(() => {
+        localStorage.setItem("trades", JSON.stringify(trades));
+      }, [trades]);
+
+      useEffect(() => {
+        document.documentElement.classList.toggle("dark", dark);
+      }, [dark]);
+
+      const pairs = [
+        { name: "EURUSD", pipValue: 10 },
+        { name: "GBPUSD", pipValue: 10 },
+        { name: "USDJPY", pipValue: 9.5 },
+        { name: "XAUUSD (Gold)", pipValue: 1 }
+      ];
+
+      const calculate = () => {
+        const balance = parseFloat(form.balance);
+        const entry = parseFloat(form.entry);
+        const stop = parseFloat(form.stop);
+        const target = parseFloat(form.target);
+        const selectedPair = pairs.find(p => p.name === form.pair);
+        const pipValue = selectedPair ? selectedPair.pipValue : 10;
+
+        if (isNaN(balance) || isNaN(entry) || isNaN(stop) || isNaN(target)) {
+          alert("لطفاً تمام فیلدها را پر کنید!");
+          return;
+        }
+
+        const riskAmount = form.riskType === "percent"
+          ? (balance * parseFloat(form.risk)) / 100
+          : parseFloat(form.risk);
+
+        const diff = Math.abs(entry - stop);
+        if (diff === 0) {
+          alert("ورودی و استاپ نباید برابر باشند!");
+          return;
+        }
+
+        const lot = riskAmount / (diff * pipValue);
+        const reward = Math.abs(entry - target) * lot * pipValue;
+        const rr = reward / riskAmount;
+
+        setTrades([...trades, {
+          ...form,
+          lot: lot.toFixed(2),
+          riskAmount: riskAmount.toFixed(2),
+          rr: rr.toFixed(2),
+          profitAtTarget: reward.toFixed(2)
+        }]);
+      };
+
+      const clear = () => {
+        setTrades([]);
+        setForm({
+          balance: "",
+          riskType: "percent",
+          risk: "",
+          entry: "",
+          stop: "",
+          target: "",
+          pair: "EURUSD"
+        });
+      };
+
+      const deleteTrade = (index) => {
+        const updated = trades.filter((_, i) => i !== index);
+        setTrades(updated);
+      };
+
+      const downloadCSV = () => {
+        if (trades.length === 0) {
+          alert("هیچ معامله‌ای برای دانلود وجود ندارد!");
+          return;
+        }
+        const headers = ["جفت ارز", "ورودی", "استاپ", "لات", "ریسک ($)", "سود تارگت ($)", "R:R"];
+        const rows = trades.map(t => [t.pair, t.entry, t.stop, t.lot, t.riskAmount, t.profitAtTarget, t.rr]);
+        const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", "trades.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      };
+
+      const rrColor = (rr) => {
+        const val = parseFloat(rr);
+        if (val >= 2) return "text-green-500 font-bold";
+        if (val >= 1) return "text-yellow-500 font-bold";
+        return "text-red-500 font-bold";
+      };
+
+      return (
+        <div className="w-full max-w-4xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-2xl shadow-lg p-6 space-y-4">
+          <div className="flex justify-between items-center">
+            <h1 className="text-2xl font-bold text-blue-600 dark:text-blue-400">ماشین حساب پیشرفته مدیریت ریسک</h1>
+            <button
+              onClick={() => setDark(!dark)}
+              className="px-4 py-2 rounded-xl bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 transition"
+            >
+              {dark ? "☀️ حالت روشن" : "🌙 حالت تاریک"}
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold mb-1">موجودی ($)</label>
+              <input
+                className="w-full p-2 border rounded-xl dark:bg-gray-700"
+                value={form.balance}
+                onChange={(e) => setForm({...form, balance: e.target.value})}
+                type="number"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-1">نوع ریسک</label>
+              <select
+                className="w-full p-2 border rounded-xl dark:bg-gray-700"
+                value={form.riskType}
+                onChange={(e) => setForm({...form, riskType: e.target.value})}
+              >
+                <option value="percent">درصد (%)</option>
+                <option value="fixed">دلاری ($)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-1">مقدار ریسک</label>
+              <input
+                className="w-full p-2 border rounded-xl dark:bg-gray-700"
+                value={form.risk}
+                onChange={(e) => setForm({...form, risk: e.target.value})}
+                type="number"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-1">جفت ارز</label>
+              <select
+                className="w-full p-2 border rounded-xl dark:bg-gray-700"
+                value={form.pair}
+                onChange={(e) => setForm({...form, pair: e.target.value})}
+              >
+                {pairs.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-1">قیمت ورود</label>
+              <input
+                className="w-full p-2 border rounded-xl dark:bg-gray-700"
+                value={form.entry}
+                onChange={(e) => setForm({...form, entry: e.target.value})}
+                type="number"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-1">استاپ لاس</label>
+              <input
+                className="w-full p-2 border rounded-xl dark:bg-gray-700"
+                value={form.stop}
+                onChange={(e) => setForm({...form, stop: e.target.value})}
+                type="number"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-1">تارگت</label>
+              <input
+                className="w-full p-2 border rounded-xl dark:bg-gray-700"
+                value={form.target}
+                onChange={(e) => setForm({...form, target: e.target.value})}
+                type="number"
+              />
+            </div>
+          </div>
+
+          <button onClick={calculate} className="w-full bg-blue-500 text-white py-2 rounded-xl hover:bg-blue-600 transition">محاسبه</button>
+          <button onClick={clear} className="w-full bg-gray-300 dark:bg-gray-700 text-black dark:text-white py-2 rounded-xl hover:bg-gray-400 dark:hover:bg-gray-600 transition">پاک کردن همه</button>
+          <button onClick={downloadCSV} className="w-full bg-green-500 text-white py-2 rounded-xl hover:bg-green-600 transition">دانلود معاملات (CSV)</button>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left mt-4 border rounded-xl overflow-hidden">
+              <thead>
+                <tr className="bg-blue-500 text-white">
+                  <th className="p-2">جفت ارز</th>
+                  <th className="p-2">ورودی</th>
+                  <th className="p-2">استاپ</th>
+                  <th className="p-2">لات</th>
+                  <th className="p-2">ریسک ($)</th>
+                  <th className="p-2">سود تارگت ($)</th>
+                  <th className="p-2">R:R</th>
+                  <th className="p-2">حذف</th>
+                </tr>
+              </thead>
+              <tbody>
+                {trades.map((t, i) => (
+                  <tr key={i} className="odd:bg-white even:bg-gray-50 dark:odd:bg-gray-800 dark:even:bg-gray-700">
+                    <td className="p-2">{t.pair}</td>
+                    <td className="p-2">{t.entry}</td>
+                    <td className="p-2">{t.stop}</td>
+                    <td className="p-2">{t.lot}</td>
+                    <td className="p-2">{t.riskAmount}</td>
+                    <td className="p-2 text-green-500 font-bold">{t.profitAtTarget}</td>
+                    <td className={`p-2 ${rrColor(t.rr)}`}>{t.rr}</td>
+                    <td className="p-2">
+                      <button
+                        onClick={() => deleteTrade(i)}
+                        className="bg-red-500 text-white px-2 py-1 rounded-lg hover:bg-red-600 transition"
+                      >
+                        حذف
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<TradeCalculator />, document.getElementById("root"));
+  </script></body>
+</html>
