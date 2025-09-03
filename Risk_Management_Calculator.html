@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+  <meta charset="UTF-8">
+  <title>Risk Management Calculator</title>
+</head>
+<body>
+  <h1>ماشین‌حساب مدیریت ریسک</h1>
+  <form>
+    <label>سرمایه کل (USD): <input type="number" id="capital"></label><br><br>
+    <label>درصد ریسک در هر معامله (%): <input type="number" id="risk"></label><br><br>
+    <label>حد ضرر (پیپ): <input type="number" id="stoploss"></label><br><br>
+    <button type="button" onclick="calc()">محاسبه حجم معامله</button>
+  </form>
+  <h2 id="result"></h2>
+
+  <script>
+    function calc() {
+      const capital = parseFloat(document.getElementById('capital').value);
+      const risk = parseFloat(document.getElementById('risk').value);
+      const stoploss = parseFloat(document.getElementById('stoploss').value);
+      if (isNaN(capital) || isNaN(risk) || isNaN(stoploss) || stoploss <= 0) {
+        document.getElementById('result').innerText = "مقادیر درست وارد کنید!";
+        return;
+      }
+      const riskAmount = capital * (risk / 100);
+      const lotSize = riskAmount / stoploss;
+      document.getElementById('result').innerText = "حجم معامله پیشنهادی: " + lotSize.toFixed(2) + " لات";
+    }
+  </script>
+</body>
+</html>
