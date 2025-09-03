@@ -1,0 +1,142 @@
+<!DOCTYPE html><html lang="fa">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ماشین حساب مدیریت ریسک و سود با نمودار</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+  <div id="root" class="min-h-screen flex items-center justify-center p-4"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;const symbols = {
+  "EURUSD": 10,
+  "GBPUSD": 10,
+  "USDJPY": 9.1,
+  "XAUUSD": 1,
+  "XAGUSD": 0.5,
+};
+
+function TradeCalculator() {
+  const [trades, setTrades] = useState([]);
+  const [form, setForm] = useState({balance: "", risk: "", entry: "", stop: "", target: "", commission: "", spread: "", symbol: "EURUSD"});
+  const chartRef = useRef(null);
+  const chartInstance = useRef(null);
+
+  const calculate = () => {
+    const riskAmount = (parseFloat(form.balance) * parseFloat(form.risk)) / 100;
+    const diff = Math.abs(parseFloat(form.entry) - parseFloat(form.stop));
+    const pipValue = symbols[form.symbol] || 10;
+    const lot = riskAmount / (diff * pipValue);
+    const grossReward = Math.abs(parseFloat(form.entry) - parseFloat(form.target)) * lot * pipValue;
+    const commission = parseFloat(form.commission || 0);
+    const spread = parseFloat(form.spread || 0);
+    const netReward = grossReward - commission - spread;
+    const rr = netReward / riskAmount;
+    setTrades([...trades, { ...form, lot: lot.toFixed(2), riskAmount: riskAmount.toFixed(2), netReward: netReward.toFixed(2), rr: rr.toFixed(2) }]);
+  };
+
+  const clearAll = () => {
+    setTrades([]);
+    setForm({balance: "", risk: "", entry: "", stop: "", target: "", commission: "", spread: "", symbol: "EURUSD"});
+  };
+
+  const removeTrade = (index) => {
+    setTrades(trades.filter((_, i) => i !== index));
+  };
+
+  useEffect(() => {
+    if (chartRef.current) {
+      if (chartInstance.current) {
+        chartInstance.current.destroy();
+      }
+      chartInstance.current = new Chart(chartRef.current, {
+        type: 'bar',
+        data: {
+          labels: trades.map((t, i) => `ترید ${i+1}`),
+          datasets: [{
+            label: 'R:R',
+            data: trades.map(t => parseFloat(t.rr)),
+            backgroundColor: trades.map(t => parseFloat(t.rr) >= 2 ? 'rgba(34,197,94,0.6)' : parseFloat(t.rr) < 1 ? 'rgba(239,68,68,0.6)' : 'rgba(59,130,246,0.6)')
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: { beginAtZero: true }
+          }
+        }
+      });
+    }
+  }, [trades]);
+
+  return (
+    <div className="w-full max-w-3xl bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 space-y-4">
+      <h1 className="text-2xl font-bold text-center">ماشین حساب کامل مدیریت ریسک، سود و نمودار R:R</h1>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label>نماد</label>
+          <select className="w-full p-2 border rounded-xl" value={form.symbol} onChange={(e) => setForm({...form, symbol: e.target.value})}>
+            {Object.keys(symbols).map(sym => <option key={sym}>{sym}</option>)}
+          </select>
+        </div>
+        {Object.keys(form).filter(key => key !== "symbol").map(key => (
+          <div key={key}>
+            <label className="block text-sm font-semibold mb-1">
+              {key === "balance" ? "موجودی" : key === "risk" ? "درصد ریسک" : key === "entry" ? "ورودی" : key === "stop" ? "استاپ لاس" : key === "target" ? "تارگت" : key === "commission" ? "کارمزد ($)" : "اسپرد ($)"}
+            </label>
+            <input
+              className="w-full p-2 border rounded-xl focus:outline-none focus:ring focus:ring-blue-400"
+              value={form[key]}
+              onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+              type="number"
+            />
+          </div>
+        ))}
+      </div>
+      <button onClick={calculate} className="w-full bg-blue-500 text-white py-2 rounded-xl hover:bg-blue-600">محاسبه</button>
+      <div className="flex gap-2">
+        <button onClick={clearAll} className="w-1/2 bg-red-500 text-white py-2 rounded-xl hover:bg-red-600">پاک کردن کل</button>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm text-left mt-4 border">
+          <thead>
+            <tr className="bg-blue-500 text-white">
+              <th className="p-2">نماد</th>
+              <th className="p-2">لات</th>
+              <th className="p-2">ریسک ($)</th>
+              <th className="p-2">سود خالص ($)</th>
+              <th className="p-2">R:R</th>
+              <th className="p-2">حذف</th>
+            </tr>
+          </thead>
+          <tbody>
+            {trades.map((t, i) => (
+              <tr key={i} className="odd:bg-white even:bg-gray-50 dark:odd:bg-gray-700 dark:even:bg-gray-600">
+                <td className="p-2">{t.symbol}</td>
+                <td className="p-2">{t.lot}</td>
+                <td className="p-2">{t.riskAmount}</td>
+                <td className="p-2">{t.netReward}</td>
+                <td className={`p-2 ${parseFloat(t.rr) >= 2 ? "text-green-600 font-bold" : parseFloat(t.rr) < 1 ? "text-red-600 font-bold" : ""}`}>{t.rr}</td>
+                <td className="p-2"><button onClick={() => removeTrade(i)} className="bg-gray-300 dark:bg-gray-500 rounded px-2">✖</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <canvas ref={chartRef} className="mt-4"></canvas>
+    </div>
+  );
+}
+
+ReactDOM.render(<TradeCalculator />, document.getElementById("root"));
+
+  </script>
+</body>
+</html>
