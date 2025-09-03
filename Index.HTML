@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ماشین حساب حرفه‌ای مدیریت ریسک فارکس</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors">
+  <div id="root" class="min-h-screen flex items-center justify-center p-4"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    function TradeCalculator() {
+      const [trades, setTrades] = useState([]);
+      const [dark, setDark] = useState(false);
+      const chartRef = useRef(null);
+      let chartInstance = useRef(null);
+
+      const [form, setForm] = useState({
+        balance: "",
+        risk: "",
+        entry: "",
+        stop: "",
+        target: "",
+        commission: "",
+        spread: ""
+      });
+
+      const calculate = () => {
+        const balance = parseFloat(form.balance) || 0;
+        const riskPercent = parseFloat(form.risk) || 0;
+        const entry = parseFloat(form.entry) || 0;
+        const stop = parseFloat(form.stop) || 0;
+        const target = parseFloat(form.target) || 0;
+        const commission = parseFloat(form.commission) || 0;
+        const spread = parseFloat(form.spread) || 0;
+
+        if (!balance || !riskPercent || !entry || !stop || !target) return;
+
+        const riskAmount = (balance * riskPercent) / 100;
+        const diff = Math.abs(entry - stop) + spread;
+        const lot = diff > 0 ? riskAmount / diff : 0;
+        const reward = Math.abs(entry - target) * lot - commission;
+        const rr = riskAmount > 0 ? reward / riskAmount : 0;
+
+        // حجم معامله نسبت به کل حساب (برای کنترل ریسک حرفه‌ای‌تر)
+        const exposurePercent = balance > 0 ? ((lot * entry) / balance) * 100 : 0;
+
+        const newTrade = {
+          ...form,
+          lot: lot.toFixed(2),
+          riskAmount: riskAmount.toFixed(2),
+          rr: rr.toFixed(2),
+          exposurePercent: exposurePercent.toFixed(2)
+        };
+
+        setTrades((prev) => [...prev, newTrade]);
+      };
+
+      useEffect(() => {
+        if (chartRef.current) {
+          if (chartInstance.current) chartInstance.current.destroy();
+          const ctx = chartRef.current.getContext("2d");
+          chartInstance.current = new Chart(ctx, {
+            type: "bar",
+            data: {
+              labels: trades.map((_, i) => `معامله ${i+1}`),
+              datasets: [{
+                label: "نسبت ریسک به بازدهی (R:R)",
+                data: trades.map((t) => parseFloat(t.rr)),
+                backgroundColor: trades.map(t => parseFloat(t.rr) >= 2 ? "rgba(34,197,94,0.7)" : parseFloat(t.rr) < 1 ? "rgba(239,68,68,0.7)" : "rgba(59,130,246,0.7)")
+              }]
+            },
+            options: {
+              responsive: true,
+              scales: {
+                y: { beginAtZero: true }
+              }
+            }
+          });
+        }
+      }, [trades]);
+
+      const inputFields = [
+        { key: "balance", label: "موجودی" },
+        { key: "risk", label: "درصد ریسک" },
+        { key: "entry", label: "ورودی" },
+        { key: "stop", label: "استاپ لاس" },
+        { key: "target", label: "تارگت" },
+        { key: "commission", label: "کارمزد (اختیاری)" },
+        { key: "spread", label: "اسپرد (اختیاری)" }
+      ];
+
+      return (
+        <div className="w-full max-w-3xl bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 space-y-4">
+          <div className="flex justify-between items-center">
+            <h1 className="text-xl font-bold">ماشین حساب حرفه‌ای مدیریت ریسک و حجم معامله</h1>
+            <button
+              onClick={() => {
+                setDark(!dark);
+                if (!dark) document.body.classList.add("dark");
+                else document.body.classList.remove("dark");
+              }}
+              className="bg-gray-300 dark:bg-gray-700 px-3 py-1 rounded-lg"
+            >
+              {dark ? "روشن" : "تاریک"}
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {inputFields.map((f) => (
+              <div key={f.key}>
+                <label className="block text-sm font-semibold mb-1">{f.label}</label>
+                <input
+                  className="w-full p-2 border rounded-xl focus:outline-none focus:ring focus:ring-blue-400 dark:bg-gray-700"
+                  placeholder={f.label}
+                  value={form[f.key]}
+                  onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
+                  type="number"
+                />
+              </div>
+            ))}
+          </div>
+          <button onClick={calculate} className="w-full bg-blue-500 text-white py-2 rounded-xl hover:bg-blue-600">محاسبه</button>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left mt-4 border dark:border-gray-700">
+              <thead>
+                <tr className="bg-blue-500 text-white">
+                  <th class="p-2">ورودی</th>
+                  <th class="p-2">استاپ</th>
+                  <th class="p-2">لات</th>
+                  <th class="p-2">ریسک ($)</th>
+                  <th class="p-2">R:R</th>
+                  <th class="p-2">٪ درگیری حساب</th>
+                </tr>
+              </thead>
+              <tbody>
+                {trades.map((t, i) => (
+                  <tr key={i} className="odd:bg-white even:bg-gray-50 dark:odd:bg-gray-800 dark:even:bg-gray-700">
+                    <td className="p-2">{t.entry}</td>
+                    <td className="p-2">{t.stop}</td>
+                    <td className="p-2">{t.lot}</td>
+                    <td className="p-2">{t.riskAmount}</td>
+                    <td className={`p-2 ${parseFloat(t.rr) >= 2 ? "text-green-600 font-bold" : parseFloat(t.rr) < 1 ? "text-red-600 font-bold" : ""}`}>{t.rr}</td>
+                    <td className={`p-2 ${parseFloat(t.exposurePercent) > 30 ? "text-red-500 font-bold" : ""}`}>{t.exposurePercent}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <canvas ref={chartRef}></canvas>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<TradeCalculator />, document.getElementById("root"));
+  </script>
+</body>
+</html>
