@@ -1,0 +1,110 @@
+<!DOCTYPE html><html lang="fa">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ماشین حساب حرفه‌ای فارکس</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(135deg, #1e3c72, #2a5298);
+      font-family: 'Vazirmatn', sans-serif;
+    }
+    .glass {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(15px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    .dark-mode body {
+      background: linear-gradient(135deg, #141e30, #243b55);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-6">
+  <div id="root" class="w-full max-w-4xl"></div>  <script type="text/babel">
+    const { useState } = React;
+
+    function TradeCalculator() {
+      const [trades, setTrades] = useState([]);
+      const [form, setForm] = useState({balance: "", risk: "", entry: "", stop: "", target: "", spread: "", commission: "", symbol: ""});
+      const [dark, setDark] = useState(false);
+
+      const calculate = () => {
+        const riskAmount = (parseFloat(form.balance || 0) * parseFloat(form.risk || 0)) / 100;
+        const diff = Math.abs(parseFloat(form.entry || 0) - parseFloat(form.stop || 0));
+        const lot = diff === 0 ? 0 : (riskAmount / diff).toFixed(2);
+        const grossProfit = Math.abs(parseFloat(form.target || 0) - parseFloat(form.entry || 0)) * parseFloat(lot);
+        const cost = parseFloat(form.spread || 0) + parseFloat(form.commission || 0);
+        const netProfit = (grossProfit - cost).toFixed(2);
+        const rr = (grossProfit / riskAmount).toFixed(2);
+        setTrades([...trades, { ...form, lot, netProfit, rr }]);
+      };
+
+      const clearAll = () => setTrades([]);
+      const removeTrade = (index) => setTrades(trades.filter((_, i) => i !== index));
+
+      return (
+        <div className={`glass rounded-3xl shadow-2xl p-6 text-white ${dark ? 'bg-gray-900' : ''}`}>
+          <div className="flex justify-between items-center mb-4">
+            <h1 className="text-3xl font-bold">ماشین حساب حرفه‌ای مدیریت ریسک</h1>
+            <button onClick={() => setDark(!dark)} className="px-4 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 transition">{dark ? 'روشن' : 'تاریک'}</button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            {Object.keys(form).map((key) => (
+              <div key={key}>
+                <label className="block text-sm font-semibold mb-1">
+                  {key === "balance" ? "موجودی ($)" : key === "risk" ? "درصد ریسک" : key === "entry" ? "ورودی" : key === "stop" ? "استاپ لاس" : key === "target" ? "تارگت" : key === "spread" ? "اسپرد ($)" : key === "commission" ? "کارمزد ($)" : "نماد"}
+                </label>
+                <input
+                  className="w-full p-2 rounded-xl border focus:outline-none focus:ring focus:ring-indigo-400 text-black"
+                  value={form[key]}
+                  onChange={(e) => setForm({...form, [key]: e.target.value})}
+                  type={key === "symbol" ? "text" : "number"}
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="flex gap-2 mb-4">
+            <button onClick={calculate} className="flex-1 bg-green-500 hover:bg-green-600 py-2 rounded-xl transition">محاسبه</button>
+            <button onClick={clearAll} className="flex-1 bg-red-500 hover:bg-red-600 py-2 rounded-xl transition">پاک کردن همه</button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-center border border-white/20">
+              <thead>
+                <tr className="bg-indigo-600">
+                  <th className="p-2">نماد</th>
+                  <th className="p-2">ورودی</th>
+                  <th className="p-2">استاپ</th>
+                  <th className="p-2">لات</th>
+                  <th className="p-2">سود خالص ($)</th>
+                  <th className="p-2">R:R</th>
+                  <th className="p-2">حذف</th>
+                </tr>
+              </thead>
+              <tbody>
+                {trades.map((t, i) => (
+                  <tr key={i} className="odd:bg-white/10 even:bg-white/5">
+                    <td className="p-2">{t.symbol}</td>
+                    <td className="p-2">{t.entry}</td>
+                    <td className="p-2">{t.stop}</td>
+                    <td className="p-2">{t.lot}</td>
+                    <td className={`p-2 ${parseFloat(t.netProfit) >= 0 ? 'text-green-400' : 'text-red-400'}`}>{t.netProfit}</td>
+                    <td className={`p-2 ${parseFloat(t.rr) >= 2 ? 'text-green-500 font-bold' : parseFloat(t.rr) < 1 ? 'text-red-500 font-bold' : ''}`}>{t.rr}</td>
+                    <td className="p-2"><button onClick={() => removeTrade(i)} className="bg-red-400 px-3 py-1 rounded-lg hover:bg-red-500">✕</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<TradeCalculator />, document.getElementById("root"));
+  </script></body>
+</html>
