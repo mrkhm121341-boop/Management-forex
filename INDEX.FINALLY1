@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ماشین حساب پیشرفته مدیریت ریسک فارکس</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+  <div id="root" class="min-h-screen flex items-center justify-center p-4"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    function TradeCalculator() {
+      const [trades, setTrades] = useState([]);
+      const [form, setForm] = useState({
+        balance: "",
+        riskType: "percent",
+        risk: "",
+        entry: "",
+        stop: "",
+        target: "",
+        pair: "EURUSD"
+      });
+
+      const pairs = [
+        { name: "EURUSD", pipValue: 10 },
+        { name: "GBPUSD", pipValue: 10 },
+        { name: "USDJPY", pipValue: 9.5 },
+        { name: "XAUUSD (Gold)", pipValue: 1 }
+      ];
+
+      const calculate = () => {
+        const balance = parseFloat(form.balance);
+        const entry = parseFloat(form.entry);
+        const stop = parseFloat(form.stop);
+        const target = parseFloat(form.target);
+        const selectedPair = pairs.find(p => p.name === form.pair);
+        const pipValue = selectedPair ? selectedPair.pipValue : 10;
+
+        if (isNaN(balance) || isNaN(entry) || isNaN(stop) || isNaN(target)) {
+          alert("لطفاً تمام فیلدها را پر کنید!");
+          return;
+        }
+
+        const riskAmount = form.riskType === "percent"
+          ? (balance * parseFloat(form.risk)) / 100
+          : parseFloat(form.risk);
+
+        const diff = Math.abs(entry - stop);
+        if (diff === 0) {
+          alert("ورودی و استاپ نباید برابر باشند!");
+          return;
+        }
+
+        const lot = riskAmount / (diff * pipValue);
+        const reward = Math.abs(entry - target) * lot * pipValue;
+        const rr = reward / riskAmount;
+
+        setTrades([...trades, {
+          ...form,
+          lot: lot.toFixed(2),
+          riskAmount: riskAmount.toFixed(2),
+          rr: rr.toFixed(2)
+        }]);
+      };
+
+      const clear = () => {
+        setTrades([]);
+        setForm({
+          balance: "",
+          riskType: "percent",
+          risk: "",
+          entry: "",
+          stop: "",
+          target: "",
+          pair: "EURUSD"
+        });
+      };
+
+      const rrColor = (rr) => {
+        const val = parseFloat(rr);
+        if (val >= 2) return "text-green-600 font-bold";
+        if (val >= 1) return "text-yellow-600 font-bold";
+        return "text-red-600 font-bold";
+      };
+
+      return (
+        <div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg p-6 space-y-4">
+          <h1 className="text-2xl font-bold text-center text-blue-600">ماشین حساب پیشرفته مدیریت ریسک و حجم معامله</h1>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold mb-1">موجودی ($)</label>
+              <input
+                className="w-full p-2 border rounded-xl"
+                value={form.balance}
+                onChange={(e) => setForm({...form, balance: e.target.value})}
+                type="number"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-1">نوع ریسک</label>
+              <select
+                className="w-full p-2 border rounded-xl"
+                value={form.riskType}
+                onChange={(e) => setForm({...form, riskType: e.target.value})}
+              >
+                <option value="percent">درصد (%)</option>
+                <option value="fixed">دلاری ($)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-1">مقدار ریسک</label>
+              <input
+                className="w-full p-2 border rounded-xl"
+                value={form.risk}
+                onChange={(e) => setForm({...form, risk: e.target.value})}
+                type="number"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-1">جفت ارز</label>
+              <select
+                className="w-full p-2 border rounded-xl"
+                value={form.pair}
+                onChange={(e) => setForm({...form, pair: e.target.value})}
+              >
+                {pairs.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-1">قیمت ورود</label>
+              <input
+                className="w-full p-2 border rounded-xl"
+                value={form.entry}
+                onChange={(e) => setForm({...form, entry: e.target.value})}
+                type="number"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-1">استاپ لاس</label>
+              <input
+                className="w-full p-2 border rounded-xl"
+                value={form.stop}
+                onChange={(e) => setForm({...form, stop: e.target.value})}
+                type="number"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-1">تارگت</label>
+              <input
+                className="w-full p-2 border rounded-xl"
+                value={form.target}
+                onChange={(e) => setForm({...form, target: e.target.value})}
+                type="number"
+              />
+            </div>
+          </div>
+          <button onClick={calculate} className="w-full bg-blue-500 text-white py-2 rounded-xl hover:bg-blue-600 transition">محاسبه</button>
+          <button onClick={clear} className="w-full bg-gray-300 text-black py-2 rounded-xl hover:bg-gray-400 transition">پاک کردن</button>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left mt-4 border rounded-xl overflow-hidden">
+              <thead>
+                <tr className="bg-blue-500 text-white">
+                  <th className="p-2">جفت ارز</th>
+                  <th className="p-2">ورودی</th>
+                  <th className="p-2">استاپ</th>
+                  <th className="p-2">لات</th>
+                  <th className="p-2">ریسک ($)</th>
+                  <th className="p-2">R:R</th>
+                </tr>
+              </thead>
+              <tbody>
+                {trades.map((t, i) => (
+                  <tr key={i} className="odd:bg-white even:bg-gray-50">
+                    <td className="p-2">{t.pair}</td>
+                    <td className="p-2">{t.entry}</td>
+                    <td className="p-2">{t.stop}</td>
+                    <td className="p-2">{t.lot}</td>
+                    <td className="p-2">{t.riskAmount}</td>
+                    <td className={`p-2 ${rrColor(t.rr)}`}>{t.rr}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<TradeCalculator />, document.getElementById("root"));
+  </script>
+</body>
+</html>
