@@ -1,0 +1,115 @@
+<!DOCTYPE html><html lang="fa">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ماشین حساب حرفه‌ای فارکس</title>
+  <style>
+    body {
+      background-color: #f3f4f6;
+      font-family: sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 20px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 600px;
+    }
+    h1 {
+      text-align: center;
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    input {
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      font-size: 1rem;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 10px;
+      background: #3b82f6;
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #2563eb;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      font-size: 0.9rem;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background: #3b82f6;
+      color: white;
+    }
+    tr:nth-child(even) {
+      background: #f9fafb;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>ماشین حساب حرفه‌ای مدیریت سرمایه فارکس</h1>
+    <div class="grid">
+      <input id="balance" type="number" placeholder="بالانس ($)">
+      <input id="risk" type="number" placeholder="ریسک (%)">
+      <input id="entry" type="number" placeholder="ورودی">
+      <input id="stop" type="number" placeholder="استاپ">
+      <input id="target" type="number" placeholder="تارگت">
+    </div>
+    <button onclick="calculate()">محاسبه</button>
+    <table>
+      <thead>
+        <tr>
+          <th>ورودی</th>
+          <th>استاپ</th>
+          <th>لات</th>
+          <th>ریسک ($)</th>
+          <th>R:R</th>
+        </tr>
+      </thead>
+      <tbody id="results"></tbody>
+    </table>
+  </div>  <script>
+    function calculate() {
+      const balance = parseFloat(document.getElementById('balance').value);
+      const risk = parseFloat(document.getElementById('risk').value);
+      const entry = parseFloat(document.getElementById('entry').value);
+      const stop = parseFloat(document.getElementById('stop').value);
+      const target = parseFloat(document.getElementById('target').value);
+      const riskAmount = (balance * risk) / 100;
+      const diff = Math.abs(entry - stop);
+      const lot = riskAmount / diff;
+      const reward = Math.abs(entry - target) * lot;
+      const rr = reward / riskAmount;
+
+      const table = document.getElementById('results');
+      const row = `<tr><td>${entry}</td><td>${stop}</td><td>${lot.toFixed(2)}</td><td>${riskAmount.toFixed(2)}</td><td>${rr.toFixed(2)}</td></tr>`;
+      table.innerHTML += row;
+    }
+  </script></body>
+</html>
